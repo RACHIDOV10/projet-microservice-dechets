@@ -54,6 +54,7 @@ Service enregistré dans Consul : waste-service
 Endpoint principal :
 
 http://localhost:8081/api/wastes
+
 5️⃣ Lancer gateway-service
 
 Dans un deuxième terminal :
