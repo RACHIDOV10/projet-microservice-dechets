@@ -1,0 +1,26 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: gatewayy-service
+
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        service-name: gatewayy-service
+
+    gateway:
+      routes:
+        - id: waste-service
+          uri: lb://waste-service          # nom du service enregistré dans Consul
+          predicates:
+            - Path=/waste/**               # capture tout ce qui commence par /waste
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /waste/(?<segment>.*)
+                replacement: /api/wastes/${segment}  # redirige vers le chemin du service réel

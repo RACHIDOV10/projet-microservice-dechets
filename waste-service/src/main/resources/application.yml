@@ -1,0 +1,27 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: waste-service
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/waste-db
+
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: true
+        service-name: waste-service
+        instance-id: waste-service-8081
+        health-check-path: /actuator/health
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
