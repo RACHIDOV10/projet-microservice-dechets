@@ -1,0 +1,25 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: admin-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/admin-db
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: true
+        service-name: admin-service
+        instance-id: admin-service-8084
+        health-check-path: /actuator/health
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

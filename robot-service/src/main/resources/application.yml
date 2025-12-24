@@ -1,0 +1,32 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: robot-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/robot_db
+    username: postgres
+    password: postgres2002
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: true
+        service-name: robot-service
+        instance-id: robot-service-8083
+        health-check-path: /actuator/health
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

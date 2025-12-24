@@ -23,4 +23,24 @@ spring:
             - name: RewritePath
               args:
                 regexp: /waste/(?<segment>.*)
-                replacement: /api/wastes/${segment}  # redirige vers le chemin du service réel
+                replacement: /api/wastes/${segment}  # redirige vers le chemin réel
+
+        - id: robot-service
+          uri: lb://robot-service
+          predicates:
+            - Path=/robot/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /robot/(?<segment>.*)
+                replacement: /api/robots/${segment}
+
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/admin/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /admin/(?<segment>.*)
+                replacement: /api/admins/${segment}
