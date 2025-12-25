@@ -3,7 +3,6 @@ package com.example.robot_service.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.util.List;
 
 @Data
 @Entity
@@ -21,9 +20,6 @@ public class Robot {
     // Relation avec l'admin qui gère ce robot
     private Long adminId;
 
-    // Liste des déchets collectés par le robot
-    @ElementCollection
-    private List<String> wasteIds;
 }
 
 

@@ -4,11 +4,13 @@ server:
 spring:
   application:
     name: robot-service
+
   datasource:
     url: jdbc:postgresql://localhost:5432/robot_db
     username: postgres
-    password: root
+    password: postgres2002
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -21,11 +23,6 @@ spring:
       discovery:
         enabled: true
         register: true
-        service-name: robot-service
-        instance-id: robot-service-8083
-        hostname: 127.0.0.1
-        prefer-ip-address: true
-        health-check-path: /actuator/health
 
 management:
   endpoints:

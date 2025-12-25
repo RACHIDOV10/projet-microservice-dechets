@@ -48,11 +48,7 @@ public class RobotController {
         service.deactivateRobot(id);
     }
 
-    // Ajouter un waste collecté
-    @PostMapping("/{id}/collect")
-    public void collectWaste(@PathVariable Long id, @RequestParam Long wasteId) {
-        service.addWaste(id, wasteId);
-    }
+
 
     }
 

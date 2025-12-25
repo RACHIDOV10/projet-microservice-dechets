@@ -12,14 +12,11 @@ spring:
       discovery:
         enabled: true
         register: true
-        hostname: 127.0.0.1
-        prefer-ip-address: true
-        service-name: gateway-service
 
     gateway:
       discovery:
         locator:
-          enabled: false   # we define routes manually
+          enabled: false
 
       routes:
 
@@ -47,7 +44,7 @@ spring:
           filters:
             - StripPrefix=1
 
-        # ========= AI FASTAPI SERVICE =========
+        # ========= AI SERVICE =========
         - id: ai-service
           uri: lb://ai-service
           predicates:

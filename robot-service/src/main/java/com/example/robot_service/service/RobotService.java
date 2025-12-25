@@ -46,13 +46,5 @@ public class RobotService {
         });
     }
 
-    // Ajouter un waste collecté par le robot
-    public void addWaste(Long robotId, Long wasteId) {
-        repository.findById(robotId).ifPresent(robot -> {
-            List<String> wastes = robot.getWasteIds();
-            wastes.add(String.valueOf(wasteId));
-            robot.setWasteIds(wastes);
-            repository.save(robot);
-        });
-    }
+
 }

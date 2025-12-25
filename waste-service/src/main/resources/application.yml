@@ -16,11 +16,6 @@ spring:
       discovery:
         enabled: true
         register: true
-        service-name: waste-service
-        instance-id: waste-service-8081
-        hostname: 127.0.0.1
-        prefer-ip-address: true
-        health-check-path: /actuator/health
 
 management:
   endpoints:

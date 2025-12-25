@@ -11,12 +11,30 @@ public class GatewayConfig {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                // WASTE SERVICE
                 .route("waste-service", r -> r
                         .path("/waste/**")
-                        .filters(f -> f
-                                .stripPrefix(1)
-                                .rewritePath("/waste/(?<segment>.*)", "/api/wastes/${segment}"))
+                        .filters(f -> f.stripPrefix(1))
                         .uri("lb://waste-service"))
+
+                // ROBOT SERVICE
+                .route("robot-service", r -> r
+                        .path("/robot/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://robot-service"))
+
+                // ADMIN SERVICE
+                .route("admin-service", r -> r
+                        .path("/admin/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://admin-service"))
+
+                // AI SERVICE
+                .route("ai-service", r -> r
+                        .path("/ai/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://ai-service"))
+
                 .build();
     }
 }

@@ -4,18 +4,22 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
+
 @Data
 @Document(collection = "wastes")
 public class Waste {
 
     @Id
     private String id;
-    private String type;        // ex: plastique, métal, papier...
-    private int quantity;       // quantité estimée
+
+    private double confidence;
+    private Instant timestamp;
+    private WasteCategory category;
+    private double latitude;
+    private double longitude;
 
     // Robot assigné pour la collecte
     private String robotId;
 
-    // Statut de collecte: pending, in_progress, collected
-    private String status;
 }

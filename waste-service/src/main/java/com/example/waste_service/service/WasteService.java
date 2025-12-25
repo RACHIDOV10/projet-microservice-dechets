@@ -33,20 +33,5 @@ public class WasteService {
         repository.deleteById(id);
     }
 
-    // Mettre à jour le statut (ex: collected)
-    public void updateStatus(String wasteId, String status) {
-        repository.findById(wasteId).ifPresent(waste -> {
-            waste.setStatus(status);
-            repository.save(waste);
-        });
-    }
 
-    // Statistiques pour le front-end
-    public long countAll() {
-        return repository.count();
-    }
-
-    public long countByStatus(String status) {
-        return repository.findByStatus(status).size();
-    }
 }
