@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/robot_db
     username: postgres
-    password: postgres2002
+    password: root
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -23,6 +23,8 @@ spring:
         register: true
         service-name: robot-service
         instance-id: robot-service-8083
+        hostname: 127.0.0.1
+        prefer-ip-address: true
         health-check-path: /actuator/health
 
 management:

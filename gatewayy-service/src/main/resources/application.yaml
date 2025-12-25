@@ -3,44 +3,54 @@ server:
 
 spring:
   application:
-    name: gatewayy-service
+    name: gateway-service
 
   cloud:
     consul:
       host: localhost
       port: 8500
       discovery:
+        enabled: true
         register: true
-        service-name: gatewayy-service
+        hostname: 127.0.0.1
+        prefer-ip-address: true
+        service-name: gateway-service
 
     gateway:
-      routes:
-        - id: waste-service
-          uri: lb://waste-service          # nom du service enregistré dans Consul
-          predicates:
-            - Path=/waste/**               # capture tout ce qui commence par /waste
-          filters:
-            - name: RewritePath
-              args:
-                regexp: /waste/(?<segment>.*)
-                replacement: /api/wastes/${segment}  # redirige vers le chemin réel
+      discovery:
+        locator:
+          enabled: false   # we define routes manually
 
+      routes:
+
+        # ========= WASTE SERVICE =========
+        - id: waste-service
+          uri: lb://waste-service
+          predicates:
+            - Path=/waste/**
+          filters:
+            - StripPrefix=1
+
+        # ========= ROBOT SERVICE =========
         - id: robot-service
           uri: lb://robot-service
           predicates:
             - Path=/robot/**
           filters:
-            - name: RewritePath
-              args:
-                regexp: /robot/(?<segment>.*)
-                replacement: /api/robots/${segment}
+            - StripPrefix=1
 
+        # ========= ADMIN SERVICE =========
         - id: admin-service
           uri: lb://admin-service
           predicates:
             - Path=/admin/**
           filters:
-            - name: RewritePath
-              args:
-                regexp: /admin/(?<segment>.*)
-                replacement: /api/admins/${segment}
+            - StripPrefix=1
+
+        # ========= AI FASTAPI SERVICE =========
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/ai/**
+          filters:
+            - StripPrefix=1
