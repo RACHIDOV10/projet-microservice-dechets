@@ -19,7 +19,7 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: false   # we define routes manually
+          enabled: false   # define routes manually
 
       routes:
 
@@ -54,3 +54,17 @@ spring:
             - Path=/ai/**
           filters:
             - StripPrefix=1
+
+      # Optional: global CORS config (works with Gateway 3.x)
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true

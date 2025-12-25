@@ -1,4 +1,4 @@
-import { Video, Play, Square, Edit, Trash2, Battery, AlertTriangle } from 'lucide-react';
+import { Video, Play, Square, Edit, Trash2, Battery, AlertTriangle, Bot } from 'lucide-react';
 import type { Robot } from '../App';
 
 type RobotsProps = {
@@ -36,6 +36,12 @@ export function Robots({ robots, updateRobotStatus, deleteRobot, openCameraFeed 
     }
   };
 
+  const handleDelete = (robot: Robot) => {
+    if (window.confirm(`Are you sure you want to remove ${robot.name}?`)) {
+      deleteRobot(robot.id);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -58,77 +64,75 @@ export function Robots({ robots, updateRobotStatus, deleteRobot, openCameraFeed 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {robots.map((robot) => (
-                <tr key={robot.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-gray-900 dark:text-white">{robot.name}</p>
-                      <p className="text-gray-500 dark:text-gray-400">{robot.model}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(robot.status)}`}>
-                      {robot.status === 'error' && <AlertTriangle className="w-4 h-4" />}
-                      <span className="capitalize">{robot.status}</span>
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.location}</td>
-                  <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.lastDetectionTime}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Battery className={`w-5 h-5 ${getBatteryColor(robot.battery)}`} />
-                      <span className={`${getBatteryColor(robot.battery)}`}>{robot.battery}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openCameraFeed(robot)}
-                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                        title="View Camera Feed"
-                      >
-                        <Video className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => toggleRobotStatus(robot)}
-                        disabled={robot.status === 'error'}
-                        className={`p-2 rounded-lg transition-colors ${
-                          robot.status === 'error'
-                            ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                            : robot.status === 'active'
-                            ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                            : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
-                        }`}
-                        title={robot.status === 'active' ? 'Stop Detection' : 'Start Detection'}
-                      >
-                        {robot.status === 'active' ? (
-                          <Square className="w-5 h-5" />
-                        ) : (
-                          <Play className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Edit Robot"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => {
-  if (window.confirm(`Are you sure you want to remove ${robot.name}?`)) {
-    deleteRobot(robot.id);
-  }
-}}
-
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        title="Remove Robot"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
+              {robots.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    <Bot className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No robots found</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                robots.map((robot) => (
+                  <tr key={robot.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-gray-900 dark:text-white">{robot.name}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{robot.model}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(robot.status)}`}>
+                        {robot.status === 'error' && <AlertTriangle className="w-4 h-4" />}
+                        <span className="capitalize">{robot.status}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.location}</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.lastDetectionTime}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Battery className={`w-5 h-5 ${getBatteryColor(robot.battery)}`} />
+                        <span className={`${getBatteryColor(robot.battery)}`}>{robot.battery}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openCameraFeed(robot)}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="View Camera Feed"
+                        >
+                          <Video className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => toggleRobotStatus(robot)}
+                          disabled={robot.status === 'error'}
+                          className={`p-2 rounded-lg transition-colors ${
+                            robot.status === 'error'
+                              ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                              : robot.status === 'active'
+                              ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                              : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+                          }`}
+                          title={robot.status === 'active' ? 'Stop Detection' : 'Start Detection'}
+                        >
+                          {robot.status === 'active' ? (
+                            <Square className="w-5 h-5" />
+                          ) : (
+                            <Play className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(robot)}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Remove Robot"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

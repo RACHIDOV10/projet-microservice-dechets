@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Bot, Activity, Trash2, TrendingUp, Play, Square, PlusCircle } from 'lucide-react';
 import { StatsCard } from './StatsCard';
 import { EventLog } from './EventLog';
+import { wasteApi } from '../services/wasteApi';
 import type { Robot, WasteEvent } from '../App';
+import type { WasteStats } from '../types/api';
 
 type DashboardProps = {
   robots: Robot[];
@@ -11,25 +14,43 @@ type DashboardProps = {
 };
 
 export function Dashboard({ robots, events, updateRobotStatus, onNavigate }: DashboardProps) {
-  const totalRobots = robots.length;
-  const activeRobots = robots.filter(r => r.status === 'active').length;
-  const wasteToday = 847; // Mock data
-  const wasteWeek = 5234; // Mock data
+  const [wasteStats, setWasteStats] = useState<WasteStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const startAllRobots = () => {
-    robots.forEach(robot => {
-      if (robot.status === 'idle') {
-        updateRobotStatus(robot.id, 'active');
-      }
-    });
+  useEffect(() => {
+    loadWasteStats();
+  }, []);
+
+  const loadWasteStats = async () => {
+    try {
+      const stats = await wasteApi.getStats();
+      setWasteStats(stats);
+    } catch (error) {
+      console.error('Error loading waste stats:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stopAllRobots = () => {
-    robots.forEach(robot => {
-      if (robot.status === 'active') {
-        updateRobotStatus(robot.id, 'idle');
+  const totalRobots = robots.length;
+  const activeRobots = robots.filter(r => r.status === 'active').length;
+  const wasteToday = wasteStats?.detected || 0;
+  const wasteCollected = wasteStats?.collected || 0;
+
+  const startAllRobots = async () => {
+    for (const robot of robots) {
+      if (robot.status === 'idle') {
+        await updateRobotStatus(robot.id, 'active');
       }
-    });
+    }
+  };
+
+  const stopAllRobots = async () => {
+    for (const robot of robots) {
+      if (robot.status === 'active') {
+        await updateRobotStatus(robot.id, 'idle');
+      }
+    }
   };
 
   return (
@@ -54,14 +75,14 @@ export function Dashboard({ robots, events, updateRobotStatus, onNavigate }: Das
           color="green"
         />
         <StatsCard
-          title="Waste Today"
-          value={`${wasteToday} kg`}
+          title="Detected Waste"
+          value={loading ? '...' : wasteToday}
           icon={Trash2}
           color="purple"
         />
         <StatsCard
-          title="Waste This Week"
-          value={`${wasteWeek} kg`}
+          title="Collected Waste"
+          value={loading ? '...' : wasteCollected}
           icon={TrendingUp}
           color="orange"
         />

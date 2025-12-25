@@ -1,5 +1,6 @@
 import { X, Play, Square, Maximize2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { aiApi } from '../services/aiApi';
 import type { Robot } from '../App';
 
 type CameraFeedModalProps = {
@@ -9,15 +10,73 @@ type CameraFeedModalProps = {
 };
 
 export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFeedModalProps) {
-  const [isDetecting, setIsDetecting] = useState(robot.status === 'active');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLImageElement>(null);
+  const streamUrlRef = useRef<string>('');
+
+  useEffect(() => {
+    // Check if stream should be active
+    checkStreamStatus();
+
+    return () => {
+      // Cleanup: stop streaming when component unmounts
+      if (isStreaming) {
+        stopStreaming();
+      }
+    };
+  }, []);
+
+  const checkStreamStatus = async () => {
+    try {
+      const shouldStream = await aiApi.shouldStream(robot.id);
+      if (shouldStream) {
+        startStreaming();
+      }
+    } catch (error) {
+      console.error('Error checking stream status:', error);
+    }
+  };
+
+  const startStreaming = async () => {
+    try {
+      setStreamError(null);
+      await aiApi.requestStream(robot.id);
+      setIsStreaming(true);
+      
+      // Set up MJPEG stream URL
+      streamUrlRef.current = aiApi.getStreamUrl(robot.id);
+      if (videoRef.current) {
+        videoRef.current.src = streamUrlRef.current;
+      }
+      
+      updateRobotStatus(robot.id, 'active');
+    } catch (error: any) {
+      console.error('Error starting stream:', error);
+      setStreamError('Failed to start video stream');
+      setIsStreaming(false);
+    }
+  };
+
+  const stopStreaming = async () => {
+    try {
+      await aiApi.stopStream(robot.id);
+      setIsStreaming(false);
+      if (videoRef.current) {
+        videoRef.current.src = '';
+      }
+      updateRobotStatus(robot.id, 'idle');
+    } catch (error: any) {
+      console.error('Error stopping stream:', error);
+      setStreamError('Failed to stop video stream');
+    }
+  };
 
   const toggleDetection = () => {
-    if (isDetecting) {
-      updateRobotStatus(robot.id, 'idle');
-      setIsDetecting(false);
+    if (isStreaming) {
+      stopStreaming();
     } else {
-      updateRobotStatus(robot.id, 'active');
-      setIsDetecting(true);
+      startStreaming();
     }
   };
 
@@ -41,49 +100,60 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
         {/* Camera Feed */}
         <div className="p-6">
           <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-            {/* Simulated camera feed with detection boxes */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse">
-                  <div className="w-16 h-16 bg-green-500/30 rounded-full flex items-center justify-center">
-                    <div className="w-8 h-8 bg-green-500/40 rounded-full" />
-                  </div>
+            {streamError && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-red-400 mb-2">{streamError}</p>
+                  <button
+                    onClick={startStreaming}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                  >
+                    Retry
+                  </button>
                 </div>
-                <p className="text-white">Camera Feed: {robot.ipPort}</p>
-                <p className="text-gray-400 mt-2">
-                  {isDetecting ? 'Detection Active' : 'Detection Paused'}
-                </p>
               </div>
-            </div>
+            )}
 
-            {/* Detection overlay boxes (simulated) */}
-            {isDetecting && (
-              <>
-                <div className="absolute top-20 left-24 w-32 h-32 border-2 border-green-400 rounded-lg">
-                  <span className="absolute -top-6 left-0 bg-green-400 text-black text-xs px-2 py-1 rounded">
-                    Plastic Bottle 94%
-                  </span>
+            {!isStreaming && !streamError && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-gray-700/50 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <div className="w-16 h-16 bg-gray-600/50 rounded-full" />
+                  </div>
+                  <p className="text-white">Camera Feed Not Active</p>
+                  <p className="text-gray-400 mt-2">Click "Start Detection" to begin streaming</p>
                 </div>
-                <div className="absolute bottom-24 right-32 w-40 h-28 border-2 border-blue-400 rounded-lg">
-                  <span className="absolute -top-6 left-0 bg-blue-400 text-black text-xs px-2 py-1 rounded">
-                    Metal Can 87%
-                  </span>
-                </div>
-              </>
+              </div>
+            )}
+
+            {/* MJPEG Stream */}
+            {isStreaming && (
+              <img
+                ref={videoRef}
+                alt="Robot camera feed"
+                className="w-full h-full object-contain"
+                style={{ display: isStreaming ? 'block' : 'none' }}
+                onError={() => {
+                  setStreamError('Failed to load video stream');
+                  setIsStreaming(false);
+                }}
+              />
             )}
 
             {/* Status indicator */}
             <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
-              <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
+              <div className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
               <span className="text-white text-xs">
-                {isDetecting ? 'LIVE' : 'PAUSED'}
+                {isStreaming ? 'LIVE' : 'PAUSED'}
               </span>
             </div>
 
             {/* Recording info */}
-            <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
-              <p className="text-white text-xs">FPS: 30 | Resolution: 1920x1080</p>
-            </div>
+            {isStreaming && (
+              <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
+                <p className="text-white text-xs">Streaming from Robot {robot.id}</p>
+              </div>
+            )}
           </div>
 
           {/* Controls */}
@@ -92,12 +162,12 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
               <button
                 onClick={toggleDetection}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
-                  isDetecting
+                  isStreaming
                     ? 'bg-red-500 hover:bg-red-600 text-white'
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
-                {isDetecting ? (
+                {isStreaming ? (
                   <>
                     <Square className="w-5 h-5" />
                     Stop Detection
@@ -109,35 +179,12 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
                   </>
                 )}
               </button>
-              <button className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
-                <Maximize2 className="w-5 h-5" />
-                Fullscreen
-              </button>
             </div>
 
             {/* Robot info */}
             <div className="text-right">
               <p className="text-gray-600 dark:text-gray-400">Model: {robot.model}</p>
               <p className="text-gray-600 dark:text-gray-400">Battery: {robot.battery}%</p>
-            </div>
-          </div>
-
-          {/* Recent detections in this session */}
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <h3 className="text-gray-900 dark:text-white mb-3">Recent Detections</h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-gray-700 dark:text-gray-300 py-2 border-b border-gray-200 dark:border-gray-600">
-                <span>Plastic Bottle</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">2 seconds ago</span>
-              </div>
-              <div className="flex items-center justify-between text-gray-700 dark:text-gray-300 py-2 border-b border-gray-200 dark:border-gray-600">
-                <span>Aluminum Can</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">45 seconds ago</span>
-              </div>
-              <div className="flex items-center justify-between text-gray-700 dark:text-gray-300 py-2">
-                <span>Plastic Container</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">1 minute ago</span>
-              </div>
             </div>
           </div>
         </div>
