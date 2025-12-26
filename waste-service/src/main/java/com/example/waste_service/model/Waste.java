@@ -21,5 +21,8 @@ public class Waste {
     private WasteCategory category;
 
     @Indexed
+    private String region;
+
+    @Indexed
     private String robotId;
 }
