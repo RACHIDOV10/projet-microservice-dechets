@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './styles/globals.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { Toaster } from './components/ui/sonner';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -10,6 +11,7 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <App />
+    <Toaster position="top-center" richColors closeButton />
   </React.StrictMode>
 );
 

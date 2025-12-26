@@ -11,6 +11,8 @@ import { WasteManagement } from './components/WasteManagement';
 import { tokenService } from './services/api';
 import { robotApi } from './services/robotApi';
 import { wasteApi } from './services/wasteApi';
+import { getAdminIdFromToken, getAdminNameFromToken } from './utils/jwt';
+import { toast } from 'sonner';
 import type { Robot as RobotType } from './types/api';
 import type { Waste } from './types/api';
 import './styles/globals.css';
@@ -49,9 +51,9 @@ const convertRobot = (backendRobot: RobotType, robotsList: Robot[]): Robot => {
     location: backendRobot.region || 'Unknown',
     lastDetectionTime: existing?.lastDetectionTime || 'Never',
     battery: existing?.battery || 100,
-    model: existing?.model || 'WSR-2000',
+    model: backendRobot.model || existing?.model || 'WSR-2000',
     ipPort: existing?.ipPort || `${backendRobot.id}:8080`,
-    description: existing?.description || `Robot at ${ backendRobot.region}`,
+    description: backendRobot.description || existing?.description || `Robot at ${backendRobot.region || 'Unknown'}`,
   };
 };
 
@@ -124,21 +126,53 @@ export default function App() {
   };
 
   // Add robot
-  const addRobot = async (robot: Omit<Robot, 'id'>) => {
+  const addRobot = async (robot: {
+    macAddress: string;
+    region: string;
+    model?: string;
+    description?: string;
+  }) => {
     try {
-      // Extract macAddress from name or generate one
-      const macAddress = `MAC-${Date.now()}`;
-      
+      // Get admin info from token
+      const token = tokenService.getToken();
+      const adminId = getAdminIdFromToken(token);
+      const adminName = getAdminNameFromToken(token);
+
+      if (!adminId) {
+        toast.error('Failed to create robot: Admin information not found');
+        throw new Error('Admin ID not found in token');
+      }
+
+      // Create robot with required fields
       await robotApi.create({
-        macAddress,
-        region: robot.location,
-        address: robot.location,
+        macAddress: robot.macAddress,
+        region: robot.region,
+        adminId: adminId,
+        model: robot.model,
+        description: robot.description,
       });
       
+      // Show success toast
+      toast.success(`Robot created successfully by ${adminName || 'Admin'} (${adminId})`, {
+        duration: 5000,
+      });
+      
+      // Reset form by navigating away and back (handled by parent)
       await loadData();
       setCurrentPage('robots');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding robot:', error);
+      
+      // Handle 500 errors gracefully
+      if (error.response?.status === 500) {
+        toast.error('Failed to create robot: Server error. Please try again later.', {
+          duration: 5000,
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to create robot', {
+          duration: 5000,
+        });
+      }
       throw error;
     }
   };
@@ -165,13 +199,19 @@ export default function App() {
         r.id === waste.robotId?.toString() ||
         r.id.toString() === waste.robotId
       );
+      
+      // Safely handle timestamp
+      const timestamp = waste.timestamp 
+        ? new Date(waste.timestamp).toLocaleString()
+        : new Date().toLocaleString();
+      
       return {
         id: waste.id,
         robotId: waste.robotId || 'unknown',
         robotName: robot?.name || 'Unknown Robot',
-        wasteType: waste.type,
-        timestamp: new Date().toLocaleString(),
-        location: robot?.location || 'Unknown',
+        wasteType: waste.category || 'Unknown',
+        timestamp: timestamp,
+        location: robot?.location || waste.region || 'Unknown',
       };
     });
   };

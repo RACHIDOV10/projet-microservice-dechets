@@ -1,6 +1,7 @@
-import { X, Play, Square, Maximize2 } from 'lucide-react';
+import { X, Play, Square } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { aiApi } from '../services/aiApi';
+import { toast } from 'sonner';
 import type { Robot } from '../App';
 
 type CameraFeedModalProps = {
@@ -14,17 +15,30 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
   const [streamError, setStreamError] = useState<string | null>(null);
   const videoRef = useRef<HTMLImageElement>(null);
   const streamUrlRef = useRef<string>('');
+  const isStreamingRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   useEffect(() => {
     // Check if stream should be active
     checkStreamStatus();
 
+    // Cleanup function
     return () => {
-      // Cleanup: stop streaming when component unmounts
-      if (isStreaming) {
-        stopStreaming();
+      // Cleanup: stop streaming when component unmounts or modal closes
+      if (isStreamingRef.current && videoRef.current) {
+        // Clean up video source immediately
+        videoRef.current.src = '';
+        // Attempt to stop stream (fire and forget for cleanup)
+        aiApi.stopStream(robot.id).catch(() => {
+          // Ignore errors during cleanup
+        });
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkStreamStatus = async () => {
@@ -33,8 +47,9 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
       if (shouldStream) {
         startStreaming();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking stream status:', error);
+      // Don't show error for initial check - user hasn't requested stream yet
     }
   };
 
@@ -43,6 +58,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
       setStreamError(null);
       await aiApi.requestStream(robot.id);
       setIsStreaming(true);
+      isStreamingRef.current = true;
       
       // Set up MJPEG stream URL
       streamUrlRef.current = aiApi.getStreamUrl(robot.id);
@@ -53,8 +69,20 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
       updateRobotStatus(robot.id, 'active');
     } catch (error: any) {
       console.error('Error starting stream:', error);
-      setStreamError('Failed to start video stream');
       setIsStreaming(false);
+      
+      // Handle 503 errors gracefully
+      if (error.response?.status === 503) {
+        toast.error('Streaming service unavailable. Please try again later.', {
+          duration: 5000,
+        });
+        setStreamError('Streaming service unavailable');
+      } else {
+        toast.error('Failed to start video stream', {
+          duration: 5000,
+        });
+        setStreamError('Failed to start video stream');
+      }
     }
   };
 
@@ -62,13 +90,36 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
     try {
       await aiApi.stopStream(robot.id);
       setIsStreaming(false);
+      isStreamingRef.current = false;
+      setStreamError(null);
+      
+      if (videoRef.current) {
+        videoRef.current.src = '';
+      }
+      
+      updateRobotStatus(robot.id, 'idle');
+    } catch (error: any) {
+      console.error('Error stopping stream:', error);
+      
+      // Handle 503 errors gracefully
+      if (error.response?.status === 503) {
+        toast.error('Streaming service unavailable', {
+          duration: 5000,
+        });
+      } else {
+        toast.error('Failed to stop video stream', {
+          duration: 5000,
+        });
+      }
+      
+      // Still update UI state even if API call failed
+      setIsStreaming(false);
+      isStreamingRef.current = false;
+      setStreamError(null);
       if (videoRef.current) {
         videoRef.current.src = '';
       }
       updateRobotStatus(robot.id, 'idle');
-    } catch (error: any) {
-      console.error('Error stopping stream:', error);
-      setStreamError('Failed to stop video stream');
     }
   };
 
@@ -78,6 +129,14 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
     } else {
       startStreaming();
     }
+  };
+
+  // Cleanup on modal close
+  const handleClose = () => {
+    if (isStreaming) {
+      stopStreaming();
+    }
+    onClose();
   };
 
   return (
@@ -90,7 +149,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             <p className="text-gray-600 dark:text-gray-400">{robot.location}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
@@ -103,10 +162,10 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             {streamError && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-red-400 mb-2">{streamError}</p>
+                  <p className="text-red-400 mb-4">{streamError}</p>
                   <button
                     onClick={startStreaming}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
                   >
                     Retry
                   </button>
@@ -127,7 +186,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             )}
 
             {/* MJPEG Stream */}
-            {isStreaming && (
+            {isStreaming && !streamError && (
               <img
                 ref={videoRef}
                 alt="Robot camera feed"
@@ -136,6 +195,9 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
                 onError={() => {
                   setStreamError('Failed to load video stream');
                   setIsStreaming(false);
+                  toast.error('Failed to load video stream', {
+                    duration: 5000,
+                  });
                 }}
               />
             )}

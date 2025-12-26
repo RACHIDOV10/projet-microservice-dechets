@@ -24,11 +24,10 @@ export interface Robot {
 export interface CreateRobotRequest {
   macAddress: string;
   region: string;
-  status: boolean; // true = active, false = inactive
-  description:string;
-  model:string;
-  
-  adminId?: string;
+  adminId: string; // required - auto-assigned from token
+  model?: string; // optional
+  description?: string; // optional
+  status?: boolean; // optional, defaults to false
 }
 
 export interface UpdateRobotRequest {

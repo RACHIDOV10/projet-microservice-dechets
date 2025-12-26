@@ -39,4 +39,9 @@ export const wasteApi = {
     );
     return response.data;
   },
+
+  // ================= MARK AS COLLECTED =================
+  markCollected: async (id: string): Promise<void> => {
+    await api.put(`/waste/api/wastes/${id}/collect`);
+  },
 };
