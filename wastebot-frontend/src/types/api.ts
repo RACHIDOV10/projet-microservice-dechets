@@ -17,7 +17,7 @@ export interface Robot {
   region: string;
   description:string;
   model:string;
-  adminId: number | null;
+  adminId: string | null;
 
 }
 
@@ -28,7 +28,7 @@ export interface CreateRobotRequest {
   description:string;
   model:string;
   
-  adminId?: number;
+  adminId?: string;
 }
 
 export interface UpdateRobotRequest {

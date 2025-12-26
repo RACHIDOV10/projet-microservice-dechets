@@ -1,64 +1,35 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { robotApi } from '../services/robotApi';
-import { CreateRobotRequest } from '../types/api';
-import { toast } from 'sonner';
+import type { Robot } from '../App';
 
 type AddRobotProps = {
+  onAddRobot: (robot: Omit<Robot, 'id'>) => void;
   onCancel: () => void;
-  onSuccess: () => void;
 };
 
-export function AddRobot({ onCancel, onSuccess }: AddRobotProps) {
-  const { admin } = useAuth();
-  const [formData, setFormData] = useState<Omit<CreateRobotRequest, 'adminId'>>({
-    macAddress: '',
-    region: '',
-    status: false,
-    description: '',
+export function AddRobot({ onAddRobot, onCancel }: AddRobotProps) {
+  const [formData, setFormData] = useState({
+    name: '',
+    location: '',
+    ipPort: '',
     model: '',
+    description: ''
   });
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!admin) {
-      toast.error('You must be logged in to create a robot');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const adminIdNum = parseInt(admin.id);
-      if (isNaN(adminIdNum)) {
-        toast.error('Invalid admin ID');
-        setLoading(false);
-        return;
-      }
-
-      const robotData: CreateRobotRequest = {
-        ...formData,
-        adminId: adminIdNum,
-      };
-
-      await robotApi.create(robotData);
-      toast.success('Robot created successfully');
-      onSuccess();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to create robot';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    onAddRobot({
+      ...formData,
+      status: 'idle',
+      lastDetectionTime: 'Never',
+      battery: 100
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      [e.target.name]: e.target.value
     });
   };
 
@@ -72,18 +43,18 @@ export function AddRobot({ onCancel, onSuccess }: AddRobotProps) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="macAddress" className="block text-gray-700 dark:text-gray-300 mb-2">
-              MAC Address *
+            <label htmlFor="name" className="block text-gray-700 dark:text-gray-300 mb-2">
+              Robot Name *
             </label>
             <input
               type="text"
-              id="macAddress"
-              name="macAddress"
-              value={formData.macAddress}
+              id="name"
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               required
               className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="e.g., AA:BB:CC:DD:EE:FF"
+              placeholder="e.g., WasteBot-Echo"
             />
           </div>
 
@@ -108,18 +79,34 @@ export function AddRobot({ onCancel, onSuccess }: AddRobotProps) {
           </div>
 
           <div>
-            <label htmlFor="region" className="block text-gray-700 dark:text-gray-300 mb-2">
-              Region *
+            <label htmlFor="location" className="block text-gray-700 dark:text-gray-300 mb-2">
+              Location *
             </label>
             <input
               type="text"
-              id="region"
-              name="region"
-              value={formData.region}
+              id="location"
+              name="location"
+              value={formData.location}
               onChange={handleChange}
               required
               className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="e.g., Warehouse C - Zone 1"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="ipPort" className="block text-gray-700 dark:text-gray-300 mb-2">
+              IP Address : Port *
+            </label>
+            <input
+              type="text"
+              id="ipPort"
+              name="ipPort"
+              value={formData.ipPort}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="e.g., 192.168.1.105:8080"
             />
           </div>
 
@@ -138,34 +125,18 @@ export function AddRobot({ onCancel, onSuccess }: AddRobotProps) {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="status"
-              name="status"
-              checked={formData.status}
-              onChange={handleChange}
-              className="w-4 h-4 text-green-500 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
-            />
-            <label htmlFor="status" className="text-gray-700 dark:text-gray-300">
-              Activate robot immediately
-            </label>
-          </div>
-
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
             >
               <Save className="w-5 h-5" />
-              {loading ? 'Creating...' : 'Save Robot'}
+              Save Robot
             </button>
             <button
               type="button"
               onClick={onCancel}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
               Cancel

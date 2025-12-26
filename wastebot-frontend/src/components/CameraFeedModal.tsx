@@ -1,24 +1,84 @@
-import { X, Play, Square } from 'lucide-react';
-import { useRobotStream } from '../hooks/useRobotStream';
-import type { Robot } from '../types/api';
+import { X, Play, Square, Maximize2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { aiApi } from '../services/aiApi';
+import type { Robot } from '../App';
 
 type CameraFeedModalProps = {
   robot: Robot;
   onClose: () => void;
+  updateRobotStatus: (robotId: string, status: 'active' | 'idle' | 'error') => void;
 };
 
-export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
-  const {
-    isStreaming,
-    streamError,
-    streamUrl,
-    startStream,
-    stopStream,
-    toggleStream,
-  } = useRobotStream({
-    robotId: robot.id,
-    enabled: true,
-  });
+export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFeedModalProps) {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLImageElement>(null);
+  const streamUrlRef = useRef<string>('');
+
+  useEffect(() => {
+    // Check if stream should be active
+    checkStreamStatus();
+
+    return () => {
+      // Cleanup: stop streaming when component unmounts
+      if (isStreaming) {
+        stopStreaming();
+      }
+    };
+  }, []);
+
+  const checkStreamStatus = async () => {
+    try {
+      const shouldStream = await aiApi.shouldStream(robot.id);
+      if (shouldStream) {
+        startStreaming();
+      }
+    } catch (error) {
+      console.error('Error checking stream status:', error);
+    }
+  };
+
+  const startStreaming = async () => {
+    try {
+      setStreamError(null);
+      await aiApi.requestStream(robot.id);
+      setIsStreaming(true);
+      
+      // Set up MJPEG stream URL
+      streamUrlRef.current = aiApi.getStreamUrl(robot.id);
+      if (videoRef.current) {
+        videoRef.current.src = streamUrlRef.current;
+      }
+      
+      updateRobotStatus(robot.id, 'active');
+    } catch (error: any) {
+      console.error('Error starting stream:', error);
+      setStreamError('Failed to start video stream');
+      setIsStreaming(false);
+    }
+  };
+
+  const stopStreaming = async () => {
+    try {
+      await aiApi.stopStream(robot.id);
+      setIsStreaming(false);
+      if (videoRef.current) {
+        videoRef.current.src = '';
+      }
+      updateRobotStatus(robot.id, 'idle');
+    } catch (error: any) {
+      console.error('Error stopping stream:', error);
+      setStreamError('Failed to stop video stream');
+    }
+  };
+
+  const toggleDetection = () => {
+    if (isStreaming) {
+      stopStreaming();
+    } else {
+      startStreaming();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -26,10 +86,8 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-gray-900 dark:text-white">
-              Robot {robot.macAddress} - Live Camera Feed
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">{robot.region}</p>
+            <h2 className="text-gray-900 dark:text-white">{robot.name} - Live Camera Feed</h2>
+            <p className="text-gray-600 dark:text-gray-400">{robot.location}</p>
           </div>
           <button
             onClick={onClose}
@@ -47,7 +105,7 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
                 <div className="text-center">
                   <p className="text-red-400 mb-2">{streamError}</p>
                   <button
-                    onClick={startStream}
+                    onClick={startStreaming}
                     className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
                   >
                     Retry
@@ -63,19 +121,21 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
                     <div className="w-16 h-16 bg-gray-600/50 rounded-full" />
                   </div>
                   <p className="text-white">Camera Feed Not Active</p>
-                  <p className="text-gray-400 mt-2">Click "Start Stream" to begin streaming</p>
+                  <p className="text-gray-400 mt-2">Click "Start Detection" to begin streaming</p>
                 </div>
               </div>
             )}
 
             {/* MJPEG Stream */}
-            {isStreaming && streamUrl && (
+            {isStreaming && (
               <img
-                src={streamUrl}
+                ref={videoRef}
                 alt="Robot camera feed"
                 className="w-full h-full object-contain"
+                style={{ display: isStreaming ? 'block' : 'none' }}
                 onError={() => {
-                  // Error handled by hook
+                  setStreamError('Failed to load video stream');
+                  setIsStreaming(false);
                 }}
               />
             )}
@@ -88,7 +148,7 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
               </span>
             </div>
 
-            {/* Robot info */}
+            {/* Recording info */}
             {isStreaming && (
               <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
                 <p className="text-white text-xs">Streaming from Robot {robot.id}</p>
@@ -100,7 +160,7 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
           <div className="flex items-center justify-between mt-6">
             <div className="flex items-center gap-3">
               <button
-                onClick={toggleStream}
+                onClick={toggleDetection}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
                   isStreaming
                     ? 'bg-red-500 hover:bg-red-600 text-white'
@@ -110,12 +170,12 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
                 {isStreaming ? (
                   <>
                     <Square className="w-5 h-5" />
-                    Stop Stream
+                    Stop Detection
                   </>
                 ) : (
                   <>
                     <Play className="w-5 h-5" />
-                    Start Stream
+                    Start Detection
                   </>
                 )}
               </button>
@@ -124,7 +184,7 @@ export function CameraFeedModal({ robot, onClose }: CameraFeedModalProps) {
             {/* Robot info */}
             <div className="text-right">
               <p className="text-gray-600 dark:text-gray-400">Model: {robot.model}</p>
-              <p className="text-gray-600 dark:text-gray-400">Region: {robot.region}</p>
+              <p className="text-gray-600 dark:text-gray-400">Battery: {robot.battery}%</p>
             </div>
           </div>
         </div>

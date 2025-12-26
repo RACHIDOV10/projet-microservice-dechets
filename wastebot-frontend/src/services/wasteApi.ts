@@ -1,21 +1,22 @@
 import api from './api';
 import { Waste, WasteStats } from '../types/api';
 
-// READ-ONLY Waste API - No write operations
 export const wasteApi = {
-  // Get all wastes
+  // ================= READ ALL =================
   getAll: async (): Promise<Waste[]> => {
     const response = await api.get<Waste[]>('/waste/api/wastes');
     return response.data;
   },
 
-  // Get waste by ID
-  getById: async (id: string): Promise<Waste> => {
-    const response = await api.get<Waste>(`/waste/api/wastes/${id}`);
+  // ================= READ BY ID =================
+  getById: async (id: string): Promise<Waste | null> => {
+    const response = await api.get<Waste | null>(
+      `/waste/api/wastes/${id}`
+    );
     return response.data;
   },
 
-  // Get wastes by robot ID
+  // ================= READ BY ROBOT =================
   getByRobotId: async (robotId: string): Promise<Waste[]> => {
     const response = await api.get<Waste[]>(
       `/waste/api/wastes/robot/${robotId}`
@@ -23,7 +24,7 @@ export const wasteApi = {
     return response.data;
   },
 
-  // Get wastes by region
+  // ================= READ BY REGION =================
   getByRegion: async (region: string): Promise<Waste[]> => {
     const response = await api.get<Waste[]>(
       `/waste/api/wastes/region/${region}`
@@ -31,9 +32,11 @@ export const wasteApi = {
     return response.data;
   },
 
-  // Get waste statistics
+  // ================= STATS (if exists) =================
   getStats: async (): Promise<WasteStats> => {
-    const response = await api.get<WasteStats>('/waste/api/wastes/stats');
+    const response = await api.get<WasteStats>(
+      '/waste/api/wastes/stats'
+    );
     return response.data;
   },
 };

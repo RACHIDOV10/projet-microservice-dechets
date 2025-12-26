@@ -1,16 +1,7 @@
 import { useState } from 'react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieLabelRenderProps } from 'recharts';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,PieLabelRenderProps  } from 'recharts';
 import { Calendar } from 'lucide-react';
-import type { Robot } from '../types/api';
-
-type WasteEvent = {
-  id: string;
-  robotId: string;
-  robotName: string;
-  wasteType: string;
-  timestamp: string;
-  location: string;
-};
+import type { Robot, WasteEvent } from '../App';
 
 type StatisticsProps = {
   robots: Robot[];
@@ -77,7 +68,7 @@ export function Statistics({ robots, events }: StatisticsProps) {
             <select className="appearance-none w-48 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="all">All Robots</option>
               {robots.map(robot => (
-                <option key={robot.id} value={robot.id}>Robot {robot.id} ({robot.macAddress})</option>
+                <option key={robot.id} value={robot.id}>{robot.name}</option>
               ))}
             </select>
           </div>

@@ -1,90 +1,46 @@
-import { Video, Play, Square, Edit, Trash2, Bot, AlertCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { robotApi } from '../services/robotApi';
-import { aiApi } from '../services/aiApi';
-import type { Robot } from '../types/api';
-import { toast } from 'sonner';
+import { Video, Play, Square, Edit, Trash2, Battery, AlertTriangle, Bot } from 'lucide-react';
+import type { Robot } from '../App';
 
 type RobotsProps = {
   robots: Robot[];
-  onRefresh: () => void;
-  onOpenCameraFeed: (robot: Robot) => void;
+  updateRobotStatus: (robotId: string, status: 'active' | 'idle' | 'error') => void;
+  deleteRobot: (robotId: string) => void;
+  openCameraFeed: (robot: Robot) => void;
 };
 
-export function Robots({ robots, onRefresh, onOpenCameraFeed }: RobotsProps) {
-  const [streamingRobots, setStreamingRobots] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState<Record<number, boolean>>({});
-
-  // Check streaming status for all robots
-  useEffect(() => {
-    const checkStreamingStatus = async () => {
-      const streaming = new Set<number>();
-      for (const robot of robots) {
-        try {
-          const shouldStream = await aiApi.shouldStream(robot.id);
-          if (shouldStream) {
-            streaming.add(robot.id);
-          }
-        } catch (error) {
-          // Ignore errors for individual robots
-        }
-      }
-      setStreamingRobots(streaming);
-    };
-
-    if (robots.length > 0) {
-      checkStreamingStatus();
-      const interval = setInterval(checkStreamingStatus, 5000); // Check every 5 seconds
-      return () => clearInterval(interval);
-    }
-  }, [robots]);
-
-  const getStatusColor = (status: boolean) => {
-    return status
-      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-  };
-
-  const toggleRobotStatus = async (robot: Robot) => {
-    if (loading[robot.id]) return;
-
-    setLoading(prev => ({ ...prev, [robot.id]: true }));
-    try {
-      if (robot.status) {
-        await robotApi.deactivate(robot.id);
-        toast.success('Robot deactivated');
-      } else {
-        await robotApi.activate(robot.id);
-        toast.success('Robot activated');
-      }
-      onRefresh();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to update robot status';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(prev => ({ ...prev, [robot.id]: false }));
+export function Robots({ robots, updateRobotStatus, deleteRobot, openCameraFeed }: RobotsProps) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+      case 'idle':
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+      case 'error':
+        return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+      default:
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
     }
   };
 
-  const handleDelete = async (robot: Robot) => {
-    if (!window.confirm(`Are you sure you want to remove robot ${robot.macAddress}?`)) {
-      return;
-    }
+  const getBatteryColor = (battery: number) => {
+    if (battery > 60) return 'text-green-600 dark:text-green-400';
+    if (battery > 30) return 'text-orange-600 dark:text-orange-400';
+    return 'text-red-600 dark:text-red-400';
+  };
 
-    setLoading(prev => ({ ...prev, [robot.id]: true }));
-    try {
-      await robotApi.delete(robot.id);
-      toast.success('Robot deleted successfully');
-      onRefresh();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to delete robot';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(prev => ({ ...prev, [robot.id]: false }));
+  const toggleRobotStatus = (robot: Robot) => {
+    if (robot.status === 'active') {
+      updateRobotStatus(robot.id, 'idle');
+    } else if (robot.status === 'idle') {
+      updateRobotStatus(robot.id, 'active');
     }
   };
 
-  const isStreaming = (robotId: number) => streamingRobots.has(robotId);
+  const handleDelete = (robot: Robot) => {
+    if (window.confirm(`Are you sure you want to remove ${robot.name}?`)) {
+      deleteRobot(robot.id);
+    }
+  };
 
   return (
     <div className="p-8">
@@ -99,11 +55,11 @@ export function Robots({ robots, onRefresh, onOpenCameraFeed }: RobotsProps) {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Robot ID</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">MAC Address</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Robot Name</th>
                 <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Status</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Region</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Model</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Location</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Last Detection</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Battery</th>
                 <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Actions</th>
               </tr>
             </thead>
@@ -118,36 +74,30 @@ export function Robots({ robots, onRefresh, onOpenCameraFeed }: RobotsProps) {
               ) : (
                 robots.map((robot) => (
                   <tr key={robot.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-6 py-4 text-gray-900 dark:text-white font-mono">
-                      {robot.id}
-                    </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="text-gray-900 dark:text-white font-medium">{robot.macAddress}</p>
-                        {robot.description && (
-                          <p className="text-gray-500 dark:text-gray-400 text-sm">{robot.description}</p>
-                        )}
+                        <p className="text-gray-900 dark:text-white">{robot.name}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{robot.model}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-2">
-                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(robot.status)}`}>
-                          {robot.status ? 'Active' : 'Inactive'}
-                        </span>
-                        {isStreaming(robot.id) && (
-                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-                            Streaming
-                          </span>
-                        )}
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(robot.status)}`}>
+                        {robot.status === 'error' && <AlertTriangle className="w-4 h-4" />}
+                        <span className="capitalize">{robot.status}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.location}</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.lastDetectionTime}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Battery className={`w-5 h-5 ${getBatteryColor(robot.battery)}`} />
+                        <span className={`${getBatteryColor(robot.battery)}`}>{robot.battery}%</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.region}</td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{robot.model}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => onOpenCameraFeed(robot)}
+                          onClick={() => openCameraFeed(robot)}
                           className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                           title="View Camera Feed"
                         >
@@ -155,15 +105,17 @@ export function Robots({ robots, onRefresh, onOpenCameraFeed }: RobotsProps) {
                         </button>
                         <button
                           onClick={() => toggleRobotStatus(robot)}
-                          disabled={loading[robot.id]}
+                          disabled={robot.status === 'error'}
                           className={`p-2 rounded-lg transition-colors ${
-                            robot.status
+                            robot.status === 'error'
+                              ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                              : robot.status === 'active'
                               ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
                               : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
-                          } disabled:opacity-50`}
-                          title={robot.status ? 'Deactivate' : 'Activate'}
+                          }`}
+                          title={robot.status === 'active' ? 'Stop Detection' : 'Start Detection'}
                         >
-                          {robot.status ? (
+                          {robot.status === 'active' ? (
                             <Square className="w-5 h-5" />
                           ) : (
                             <Play className="w-5 h-5" />
@@ -171,9 +123,8 @@ export function Robots({ robots, onRefresh, onOpenCameraFeed }: RobotsProps) {
                         </button>
                         <button
                           onClick={() => handleDelete(robot)}
-                          disabled={loading[robot.id]}
-                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                          title="Delete Robot"
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Remove Robot"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>

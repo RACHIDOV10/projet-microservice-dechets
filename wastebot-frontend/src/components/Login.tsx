@@ -2,16 +2,13 @@ import { useState } from 'react';
 import { LogIn, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { tokenService } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import type { LoginRequest } from '../types/api';
-import { toast } from 'sonner';
 
 type LoginProps = {
   onLoginSuccess: () => void;
 };
 
 export function Login({ onLoginSuccess }: LoginProps) {
-  const { setAdmin } = useAuth();
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
     password: '',
@@ -27,36 +24,9 @@ export function Login({ onLoginSuccess }: LoginProps) {
     try {
       const response = await authApi.login(formData);
       tokenService.setToken(response.token);
-      
-      // Try to get admin info from backend, otherwise decode from token
-      try {
-        const admin = await authApi.getCurrentAdmin();
-        setAdmin(admin);
-      } catch {
-        // If getCurrentAdmin fails, decode from token
-        const token = response.token;
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        const decoded = JSON.parse(jsonPayload);
-        setAdmin({
-          id: decoded.id || decoded.sub || decoded.userId || '',
-          name: decoded.name || decoded.username || 'Admin',
-          email: decoded.email || formData.email,
-        });
-      }
-      
-      toast.success('Login successful');
       onLoginSuccess();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

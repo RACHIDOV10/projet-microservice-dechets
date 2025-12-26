@@ -8,15 +8,55 @@ import { Settings } from './components/Settings';
 import { CameraFeedModal } from './components/CameraFeedModal';
 import { Login } from './components/Login';
 import { WasteManagement } from './components/WasteManagement';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Toaster } from './components/ui/sonner';
+import { tokenService } from './services/api';
 import { robotApi } from './services/robotApi';
 import { wasteApi } from './services/wasteApi';
-import type { Robot, Waste } from './types/api';
+import type { Robot as RobotType } from './types/api';
+import type { Waste } from './types/api';
 import './styles/globals.css';
 
-function AppContent() {
-  const { admin, isAuthenticated, logout } = useAuth();
+// Legacy types for backward compatibility
+export type Robot = {
+  id: string;
+  name: string;
+  status: 'active' | 'idle' | 'error';
+  location: string;
+  lastDetectionTime: string;
+  battery: number;
+  model: string;
+  ipPort: string;
+  description: string;
+};
+
+export type WasteEvent = {
+  id: string;
+  robotId: string;
+  robotName: string;
+  wasteType: string;
+  timestamp: string;
+  location: string;
+};
+
+// Convert backend Robot to frontend Robot format
+const convertRobot = (backendRobot: RobotType, robotsList: Robot[]): Robot => {
+  // Try to find existing robot to preserve UI-specific fields
+  const existing = robotsList.find(r => r.id === backendRobot.id.toString());
+  
+  return {
+    id: backendRobot.id.toString(),
+    name: `Robot-${backendRobot.macAddress || backendRobot.id}`,
+    status: backendRobot.status ? 'active' : 'idle',
+    location: backendRobot.address || backendRobot.region || 'Unknown',
+    lastDetectionTime: existing?.lastDetectionTime || 'Never',
+    battery: existing?.battery || 100,
+    model: existing?.model || 'WSR-2000',
+    ipPort: existing?.ipPort || `${backendRobot.id}:8080`,
+    description: existing?.description || `Robot at ${backendRobot.address || backendRobot.region}`,
+  };
+};
+
+export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [selectedRobot, setSelectedRobot] = useState<Robot | null>(null);
@@ -25,12 +65,14 @@ function AppContent() {
   const [wastes, setWastes] = useState<Waste[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load data when authenticated
+  // Check authentication on mount
   useEffect(() => {
-    if (isAuthenticated) {
+    const token = tokenService.getToken();
+    if (token) {
+      setIsAuthenticated(true);
       loadData();
     }
-  }, [isAuthenticated]);
+  }, []);
 
   // Load robots and wastes data
   const loadData = async () => {
@@ -41,11 +83,10 @@ function AppContent() {
         wasteApi.getAll(),
       ]);
       
-      setRobots(robotsData);
+      setRobots(robotsData.map(r => convertRobot(r, robots)));
       setWastes(wastesData);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading data:', error);
-      // Error handling is done by toast in individual components
     } finally {
       setLoading(false);
     }
@@ -53,37 +94,60 @@ function AppContent() {
 
   // Handle login success
   const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
     loadData();
   };
 
   // Handle logout
   const handleLogout = () => {
-    logout();
+    tokenService.removeToken();
+    setIsAuthenticated(false);
     setRobots([]);
     setWastes([]);
-    setSelectedRobot(null);
-    setShowCameraModal(false);
   };
 
   // Update robot status (activate/deactivate)
-  const updateRobotStatus = async (robotId: number, activate: boolean) => {
+  const updateRobotStatus = async (robotId: string, status: 'active' | 'idle' | 'error') => {
     try {
-      if (activate) {
-        await robotApi.activate(robotId);
-      } else {
-        await robotApi.deactivate(robotId);
+      const id = parseInt(robotId);
+      if (status === 'active') {
+        await robotApi.activate(id);
+      } else if (status === 'idle') {
+        await robotApi.deactivate(id);
       }
+      
+      // Refresh robots
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating robot status:', error);
+    }
+  };
+
+  // Add robot
+  const addRobot = async (robot: Omit<Robot, 'id'>) => {
+    try {
+      // Extract macAddress from name or generate one
+      const macAddress = `MAC-${Date.now()}`;
+      
+      await robotApi.create({
+        macAddress,
+        region: robot.location,
+        address: robot.location,
+      });
+      
+      await loadData();
+      setCurrentPage('robots');
+    } catch (error) {
+      console.error('Error adding robot:', error);
       throw error;
     }
   };
 
-  // Add robot success handler
-  const handleAddRobotSuccess = () => {
-    loadData();
-    setCurrentPage('robots');
+  // Delete robot
+  const deleteRobot = async (robotId: string) => {
+    // Note: Delete endpoint not available in backend
+    // This is a placeholder for future implementation
+    console.warn('Delete robot functionality not available in backend');
   };
 
   // Open camera feed
@@ -92,32 +156,29 @@ function AppContent() {
     setShowCameraModal(true);
   };
 
-  // Close camera feed
-  const closeCameraFeed = () => {
-    setShowCameraModal(false);
-    setSelectedRobot(null);
-  };
-
-  // Convert wastes to events for dashboard (if needed)
-  const getWasteEvents = () => {
+  // Convert wastes to events for dashboard
+  const getWasteEvents = (): WasteEvent[] => {
     return wastes.slice(0, 10).map((waste) => {
-      const robot = robots.find(r => r.id.toString() === waste.robotId);
+      // Match robot by ID (handling both string and number comparisons)
+      const robot = robots.find(r => 
+        r.id === waste.robotId || 
+        r.id === waste.robotId?.toString() ||
+        r.id.toString() === waste.robotId
+      );
       return {
         id: waste.id,
         robotId: waste.robotId || 'unknown',
-        robotName: robot ? `Robot ${robot.id}` : 'Unknown Robot',
-        wasteType: waste.category,
-        timestamp: typeof waste.timestamp === 'string' 
-          ? new Date(waste.timestamp).toLocaleString()
-          : waste.timestamp.toLocaleString(),
-        location: waste.region,
+        robotName: robot?.name || 'Unknown Robot',
+        wasteType: waste.type,
+        timestamp: new Date().toLocaleString(),
+        location: robot?.location || 'Unknown',
       };
     });
   };
 
   // Render page content
   const renderPage = () => {
-    if (loading && robots.length === 0 && wastes.length === 0) {
+    if (loading && robots.length === 0) {
       return (
         <div className="flex items-center justify-center h-screen">
           <div className="text-gray-600 dark:text-gray-400">Loading...</div>
@@ -139,27 +200,17 @@ function AppContent() {
         return (
           <Robots
             robots={robots}
-            onRefresh={loadData}
-            onOpenCameraFeed={openCameraFeed}
+            updateRobotStatus={updateRobotStatus}
+            deleteRobot={deleteRobot}
+            openCameraFeed={openCameraFeed}
           />
         );
       case 'statistics':
         return <Statistics robots={robots} events={getWasteEvents()} />;
       case 'add-robot':
-        return (
-          <AddRobot
-            onCancel={() => setCurrentPage('robots')}
-            onSuccess={handleAddRobotSuccess}
-          />
-        );
+        return <AddRobot onAddRobot={addRobot} onCancel={() => setCurrentPage('robots')} />;
       case 'waste':
-        return (
-          <WasteManagement
-            wastes={wastes}
-            robots={robots}
-            onRefresh={loadData}
-          />
-        );
+        return <WasteManagement wastes={wastes} robots={robots} onRefresh={loadData} />;
       case 'settings':
         return <Settings darkMode={darkMode} setDarkMode={setDarkMode} />;
       default:
@@ -176,12 +227,7 @@ function AppContent() {
 
   // Show login if not authenticated
   if (!isAuthenticated) {
-    return (
-      <>
-        <Login onLoginSuccess={handleLoginSuccess} />
-        <Toaster />
-      </>
-    );
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -199,19 +245,11 @@ function AppContent() {
         {showCameraModal && selectedRobot && (
           <CameraFeedModal
             robot={selectedRobot}
-            onClose={closeCameraFeed}
+            onClose={() => setShowCameraModal(false)}
+            updateRobotStatus={updateRobotStatus}
           />
         )}
       </div>
-      <Toaster />
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   );
 }

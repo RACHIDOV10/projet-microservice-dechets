@@ -1,13 +1,5 @@
 import { Clock, MapPin, Trash2 } from 'lucide-react';
-
-type WasteEvent = {
-  id: string;
-  robotId: string;
-  robotName: string;
-  wasteType: string;
-  timestamp: string;
-  location: string;
-};
+import type { WasteEvent } from '../App';
 
 type EventLogProps = {
   events: WasteEvent[];
