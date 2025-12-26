@@ -63,12 +63,12 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
   };
 
   const getRobotName = (robotId: string | null) => {
-    if (!robotId) return 'Unassigned';
-    const robot = robots.find(r => 
-      r.id === robotId || 
-      r.id === robotId.toString() ||
-      r.id.toString() === robotId
-    );
+    if (robotId == null) return 'Unassigned';
+    const robot = robots.find(r => {
+      const robotIdStr = r.id.toString();
+      const wasteRobotIdStr = robotId.toString();
+      return robotIdStr === wasteRobotIdStr || r.id === robotId;
+    });
     return robot?.name || `Robot ${robotId}`;
   };
 

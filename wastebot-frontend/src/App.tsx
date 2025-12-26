@@ -17,16 +17,13 @@ import type { Robot as RobotType } from './types/api';
 import type { Waste } from './types/api';
 import './styles/globals.css';
 
-// Legacy types for backward compatibility
+// Frontend Robot type (derived from backend)
 export type Robot = {
   id: string;
   name: string;
   status: 'active' | 'idle' | 'error';
   location: string;
-  lastDetectionTime: string;
-  battery: number;
   model: string;
-  ipPort: string;
   description: string;
 };
 
@@ -40,20 +37,14 @@ export type WasteEvent = {
 };
 
 // Convert backend Robot to frontend Robot format
-const convertRobot = (backendRobot: RobotType, robotsList: Robot[]): Robot => {
-  // Try to find existing robot to preserve UI-specific fields
-  const existing = robotsList.find(r => r.id === backendRobot.id.toString());
-  
+const convertRobot = (backendRobot: RobotType): Robot => {
   return {
     id: backendRobot.id.toString(),
     name: `Robot-${backendRobot.macAddress || backendRobot.id}`,
     status: backendRobot.status ? 'active' : 'idle',
     location: backendRobot.region || 'Unknown',
-    lastDetectionTime: existing?.lastDetectionTime || 'Never',
-    battery: existing?.battery || 100,
-    model: backendRobot.model || existing?.model || 'WSR-2000',
-    ipPort: existing?.ipPort || `${backendRobot.id}:8080`,
-    description: backendRobot.description || existing?.description || `Robot at ${backendRobot.region || 'Unknown'}`,
+    model: backendRobot.model || 'Unknown',
+    description: backendRobot.description || `Robot at ${backendRobot.region || 'Unknown'}`,
   };
 };
 
@@ -85,7 +76,7 @@ export default function App() {
         wasteApi.getAll(),
       ]);
       
-      setRobots(robotsData.map(r => convertRobot(r, robots)));
+      setRobots(robotsData.map(r => convertRobot(r)));
       setWastes(wastesData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -118,10 +109,24 @@ export default function App() {
         await robotApi.deactivate(id);
       }
       
-      // Refresh robots
-      await loadData();
-    } catch (error) {
+      // Update robot status in UI state without full reload
+      setRobots(prevRobots =>
+        prevRobots.map(robot =>
+          robot.id === robotId
+            ? { ...robot, status: status === 'active' ? 'active' : 'idle' }
+            : robot
+        )
+      );
+      
+      toast.success(`Robot ${status === 'active' ? 'activated' : 'deactivated'} successfully`, {
+        duration: 3000,
+      });
+    } catch (error: any) {
       console.error('Error updating robot status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update robot status', {
+        duration: 5000,
+      });
+      throw error;
     }
   };
 
@@ -179,9 +184,23 @@ export default function App() {
 
   // Delete robot
   const deleteRobot = async (robotId: string) => {
-    // Note: Delete endpoint not available in backend
-    // This is a placeholder for future implementation
-    console.warn('Delete robot functionality not available in backend');
+    try {
+      const id = parseInt(robotId);
+      await robotApi.delete(id);
+      
+      // Remove robot from UI state without page reload
+      setRobots(prevRobots => prevRobots.filter(r => r.id !== robotId));
+      
+      toast.success('Robot deleted successfully', {
+        duration: 5000,
+      });
+    } catch (error: any) {
+      console.error('Error deleting robot:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete robot', {
+        duration: 5000,
+      });
+      throw error;
+    }
   };
 
   // Open camera feed
@@ -193,12 +212,15 @@ export default function App() {
   // Convert wastes to events for dashboard
   const getWasteEvents = (): WasteEvent[] => {
     return wastes.slice(0, 10).map((waste) => {
-      // Match robot by ID (handling both string and number comparisons)
-      const robot = robots.find(r => 
-        r.id === waste.robotId || 
-        r.id === waste.robotId?.toString() ||
-        r.id.toString() === waste.robotId
-      );
+      // Safely match robot by ID - check for null first
+      let robot = null;
+      if (waste.robotId != null) {
+        robot = robots.find(r => {
+          const robotIdStr = r.id.toString();
+          const wasteRobotIdStr = waste.robotId!.toString();
+          return robotIdStr === wasteRobotIdStr || r.id === waste.robotId;
+        });
+      }
       
       // Safely handle timestamp
       const timestamp = waste.timestamp 
@@ -246,7 +268,7 @@ export default function App() {
           />
         );
       case 'statistics':
-        return <Statistics robots={robots} events={getWasteEvents()} />;
+        return <Statistics robots={robots} events={getWasteEvents()} wastes={wastes} />;
       case 'add-robot':
         return <AddRobot onAddRobot={addRobot} onCancel={() => setCurrentPage('robots')} />;
       case 'waste':

@@ -121,15 +121,6 @@ export function Settings({ darkMode, setDarkMode }: SettingsProps) {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-900 dark:text-white">Low Battery Warnings</p>
-                <p className="text-gray-500 dark:text-gray-400">Alert when robot battery is low</p>
-              </div>
-              <button className="relative w-14 h-7 rounded-full bg-green-500">
-                <span className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full translate-x-7" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-gray-900 dark:text-white">Detection Reports</p>
                 <p className="text-gray-500 dark:text-gray-400">Daily summary of waste detections</p>
               </div>

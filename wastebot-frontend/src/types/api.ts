@@ -59,10 +59,6 @@ export interface StreamStatusResponse {
   streaming: boolean;
 }
 
-export interface ShouldStreamResponse {
-  [key: string]: boolean;
-}
-
 // Admin Types
 export interface Admin {
   id: string;
