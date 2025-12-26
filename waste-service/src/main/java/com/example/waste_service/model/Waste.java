@@ -13,11 +13,10 @@ public class Waste {
     @Id
     private String id;
 
-    private double confidence;
+
     private Instant timestamp;
     private WasteCategory category;
-    private double latitude;
-    private double longitude;
+
 
     // Robot assigné pour la collecte
     private String robotId;
