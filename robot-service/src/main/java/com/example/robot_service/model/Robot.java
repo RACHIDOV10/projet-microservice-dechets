@@ -17,10 +17,12 @@ public class Robot {
     private String macAddress;
     private boolean status;
     private String region;
+    private String description;
+    private String model;
 
 
     // Relation avec l'admin qui gère ce robot
-    private Long adminId;
+    private String adminId;
 
 }
 
