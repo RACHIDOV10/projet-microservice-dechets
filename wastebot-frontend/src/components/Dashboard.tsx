@@ -3,13 +3,24 @@ import { Bot, Activity, Trash2, TrendingUp, Play, Square, PlusCircle } from 'luc
 import { StatsCard } from './StatsCard';
 import { EventLog } from './EventLog';
 import { wasteApi } from '../services/wasteApi';
-import type { Robot, WasteEvent } from '../App';
+import { robotApi } from '../services/robotApi';
+import type { Robot } from '../types/api';
 import type { WasteStats } from '../types/api';
+import { toast } from 'sonner';
+
+type WasteEvent = {
+  id: string;
+  robotId: string;
+  robotName: string;
+  wasteType: string;
+  timestamp: string;
+  location: string;
+};
 
 type DashboardProps = {
   robots: Robot[];
   events: WasteEvent[];
-  updateRobotStatus: (robotId: string, status: 'active' | 'idle' | 'error') => void;
+  updateRobotStatus: (robotId: number, activate: boolean) => Promise<void>;
   onNavigate: (page: string) => void;
 };
 
@@ -33,23 +44,33 @@ export function Dashboard({ robots, events, updateRobotStatus, onNavigate }: Das
   };
 
   const totalRobots = robots.length;
-  const activeRobots = robots.filter(r => r.status === 'active').length;
+  const activeRobots = robots.filter(r => r.status).length;
   const wasteToday = wasteStats?.detected || 0;
   const wasteCollected = wasteStats?.collected || 0;
 
   const startAllRobots = async () => {
-    for (const robot of robots) {
-      if (robot.status === 'idle') {
-        await updateRobotStatus(robot.id, 'active');
+    try {
+      for (const robot of robots) {
+        if (!robot.status) {
+          await updateRobotStatus(robot.id, true);
+        }
       }
+      toast.success('All robots activated');
+    } catch (error) {
+      toast.error('Failed to activate some robots');
     }
   };
 
   const stopAllRobots = async () => {
-    for (const robot of robots) {
-      if (robot.status === 'active') {
-        await updateRobotStatus(robot.id, 'idle');
+    try {
+      for (const robot of robots) {
+        if (robot.status) {
+          await updateRobotStatus(robot.id, false);
+        }
       }
+      toast.success('All robots deactivated');
+    } catch (error) {
+      toast.error('Failed to deactivate some robots');
     }
   };
 

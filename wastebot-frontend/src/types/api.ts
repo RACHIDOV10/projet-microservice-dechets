@@ -15,47 +15,39 @@ export interface Robot {
   macAddress: string;
   status: boolean; // true = active, false = inactive
   region: string;
-  address: string;
+  description:string;
+  model:string;
   adminId: number | null;
-  wasteIds: string[];
+
 }
 
 export interface CreateRobotRequest {
   macAddress: string;
   region: string;
-  address: string;
+  status: boolean; // true = active, false = inactive
+  description:string;
+  model:string;
+  
   adminId?: number;
 }
 
 export interface UpdateRobotRequest {
   macAddress?: string;
   region?: string;
-  address?: string;
-  adminId?: number;
+  description?:string;
+  model?:string;
 }
 
 // Waste Types
 export interface Waste {
   id: string;
-  type: string;
-  quantity: number;
+  timestamp:Date;
+  region: string;
+  category: string;
   robotId: string | null;
-  status: string; // "detected", "collected", "pending", "in_progress"
 }
 
-export interface CreateWasteRequest {
-  type: string;
-  quantity: number;
-  robotId?: string;
-  status?: string;
-}
 
-export interface UpdateWasteRequest {
-  type?: string;
-  quantity?: number;
-  robotId?: string;
-  status?: string;
-}
 
 export interface WasteStats {
   total: number;

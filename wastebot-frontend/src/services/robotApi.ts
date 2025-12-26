@@ -16,8 +16,28 @@ export const robotApi = {
 
   // Create robot
   create: async (robot: CreateRobotRequest): Promise<Robot> => {
-    const response = await api.post<Robot>('/robot/api/robots', robot);
+    const response = await api.post<Robot>(
+      '/robot/api/robots',
+      robot
+    );
     return response.data;
+  },
+
+  // Update robot
+  update: async (
+    id: number,
+    robot: UpdateRobotRequest
+  ): Promise<Robot> => {
+    const response = await api.put<Robot>(
+      `/robot/api/robots/${id}`,
+      robot
+    );
+    return response.data;
+  },
+
+  // Delete robot
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/robot/api/robots/${id}`);
   },
 
   // Activate robot
@@ -29,8 +49,4 @@ export const robotApi = {
   deactivate: async (id: number): Promise<void> => {
     await api.post(`/robot/api/robots/${id}/deactivate`);
   },
-
-  // Note: Delete endpoint not available in backend controller
-  // For now, we'll skip delete functionality
 };
-

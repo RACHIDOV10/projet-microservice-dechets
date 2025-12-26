@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Filter, Search, RefreshCw, CheckCircle, Clock } from 'lucide-react';
+import { Trash2, Filter, Search, RefreshCw } from 'lucide-react';
 import { wasteApi } from '../services/wasteApi';
 import type { Waste } from '../types/api';
-import type { Robot } from '../App';
+import { toast } from 'sonner';
 
 type WasteManagementProps = {
   wastes: Waste[];
-  robots: Robot[];
+  robots: Array<{ id: number; macAddress: string; region: string }>;
   onRefresh: () => void;
 };
 
@@ -15,7 +15,8 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
   const [filteredWastes, setFilteredWastes] = useState<Waste[]>(initialWastes);
   const [selectedRobotId, setSelectedRobotId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setWastes(initialWastes);
@@ -27,18 +28,21 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
 
     // Filter by robot ID
     if (selectedRobotId !== 'all') {
-      filtered = filtered.filter(waste => waste.robotId === selectedRobotId);
+      filtered = filtered.filter(waste => 
+        waste.robotId === selectedRobotId || 
+        waste.robotId === selectedRobotId.toString()
+      );
     }
 
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(waste => waste.status === statusFilter);
+    // Filter by region
+    if (selectedRegion !== 'all') {
+      filtered = filtered.filter(waste => waste.region === selectedRegion);
     }
 
-    // Filter by search query (type)
+    // Filter by search query (category)
     if (searchQuery.trim()) {
       filtered = filtered.filter(waste =>
-        waste.type.toLowerCase().includes(searchQuery.toLowerCase())
+        waste.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -47,52 +51,46 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
 
   useEffect(() => {
     applyFilters(wastes);
-  }, [selectedRobotId, statusFilter, searchQuery, wastes]);
+  }, [selectedRobotId, selectedRegion, searchQuery, wastes]);
 
-  const handleMarkCollected = async (wasteId: string) => {
+  const handleRefresh = async () => {
+    setLoading(true);
     try {
-      await wasteApi.markCollected(wasteId);
-      onRefresh();
+      await onRefresh();
+      toast.success('Waste data refreshed');
     } catch (error) {
-      console.error('Error marking waste as collected:', error);
-      alert('Failed to update waste status');
+      toast.error('Failed to refresh waste data');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      detected: { label: 'Detected', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
-      collected: { label: 'Collected', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
-      pending: { label: 'Pending', color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' },
-      in_progress: { label: 'In Progress', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const Icon = status === 'collected' ? CheckCircle : Clock;
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    );
   };
 
   const getRobotName = (robotId: string | null) => {
     if (!robotId) return 'Unassigned';
     const robot = robots.find(r => 
-      r.id === robotId || 
-      r.id === robotId.toString() ||
-      r.id.toString() === robotId
+      r.id.toString() === robotId || 
+      r.id === parseInt(robotId)
     );
-    return robot?.name || `Robot ${robotId}`;
+    return robot ? `Robot ${robot.id} (${robot.macAddress})` : `Robot ${robotId}`;
   };
+
+  const formatDate = (date: Date | string) => {
+    try {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleString();
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  // Get unique regions from wastes
+  const regions = Array.from(new Set(wastes.map(w => w.region)));
 
   return (
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-gray-900 dark:text-white mb-2">Waste Management</h1>
-        <p className="text-gray-600 dark:text-gray-400">Monitor and manage detected waste items</p>
+        <p className="text-gray-600 dark:text-gray-400">Monitor detected waste items (Read-only)</p>
       </div>
 
       {/* Filters */}
@@ -101,13 +99,13 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
           <div className="flex-1 min-w-[200px]">
             <label className="block text-gray-700 dark:text-gray-300 mb-2">
               <Search className="w-4 h-4 inline mr-2" />
-              Search by Type
+              Search by Category
             </label>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search waste types..."
+              placeholder="Search waste categories..."
               className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -124,60 +122,56 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
             >
               <option value="all">All Robots</option>
               {robots.map(robot => (
-                <option key={robot.id} value={robot.id}>
-                  {robot.name}
+                <option key={robot.id} value={robot.id.toString()}>
+                  Robot {robot.id} ({robot.macAddress})
                 </option>
               ))}
             </select>
           </div>
 
           <div className="min-w-[180px]">
-            <label className="block text-gray-700 dark:text-gray-300 mb-2">Status</label>
+            <label className="block text-gray-700 dark:text-gray-300 mb-2">Filter by Region</label>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="all">All Status</option>
-              <option value="detected">Detected</option>
-              <option value="collected">Collected</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
+              <option value="all">All Regions</option>
+              {regions.map(region => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
             </select>
           </div>
 
           <button
-            onClick={onRefresh}
-            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center gap-2"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Waste</div>
+          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Waste Items</div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">{filteredWastes.length}</div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Detected</div>
-          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-            {filteredWastes.filter(w => w.status === 'detected').length}
+          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Unique Categories</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            {new Set(filteredWastes.map(w => w.category)).size}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Collected</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {filteredWastes.filter(w => w.status === 'collected').length}
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Quantity</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {filteredWastes.reduce((sum, w) => sum + w.quantity, 0)}
+          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Regions</div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            {new Set(filteredWastes.map(w => w.region)).size}
           </div>
         </div>
       </div>
@@ -189,17 +183,16 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">ID</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Type</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Quantity</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Category</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Region</th>
                 <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Robot</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Status</th>
-                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Actions</th>
+                <th className="px-6 py-4 text-left text-gray-700 dark:text-gray-300">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredWastes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     <Trash2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No waste items found</p>
                   </td>
@@ -211,26 +204,16 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
                       {waste.id.substring(0, 8)}...
                     </td>
                     <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                      {waste.type}
+                      {waste.category}
                     </td>
                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {waste.quantity}
+                      {waste.region}
                     </td>
                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                       {getRobotName(waste.robotId)}
                     </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(waste.status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {waste.status !== 'collected' && (
-                        <button
-                          onClick={() => handleMarkCollected(waste.id)}
-                          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors"
-                        >
-                          Mark Collected
-                        </button>
-                      )}
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300 text-sm">
+                      {formatDate(waste.timestamp)}
                     </td>
                   </tr>
                 ))
@@ -242,4 +225,3 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
     </div>
   );
 }
-
