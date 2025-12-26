@@ -18,6 +18,7 @@ public class RobotService {
 
     // CREATE / UPDATE
     public Robot save(Robot robot) {
+        
         return repository.save(robot);
     }
 
@@ -32,7 +33,7 @@ public class RobotService {
     }
 
     // READ BY ADMIN
-    public List<Robot> findByAdminId(Long adminId) {
+    public List<Robot> findByAdminId(String adminId) {
         return repository.findByAdminId(adminId);
     }
 

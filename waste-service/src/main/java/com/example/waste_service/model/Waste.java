@@ -2,10 +2,10 @@ package com.example.waste_service.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.time.LocalDate;
 
 @Data
 @Document(collection = "wastes")
@@ -14,13 +14,12 @@ public class Waste {
     @Id
     private String id;
 
+    @Indexed
+    private Instant timestamp;
 
-    private LocalDate timestamp;
+    @Indexed
     private WasteCategory category;
-    private String region;
 
-
-    // Robot assigné pour la collecte
+    @Indexed
     private String robotId;
-
 }

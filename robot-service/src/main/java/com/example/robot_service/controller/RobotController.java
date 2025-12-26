@@ -19,7 +19,7 @@ public class RobotController {
     // ================= CREATE =================
     @PostMapping
     public Robot create(@RequestBody Robot robot) {
-        robot.setId(null); // forcer la création
+   
         return service.save(robot);
     }
 
@@ -35,7 +35,7 @@ public class RobotController {
     }
 
     @GetMapping("/admin/{adminId}")
-    public List<Robot> getByAdmin(@PathVariable Long adminId) {
+    public List<Robot> getByAdmin(@PathVariable String adminId) {
         return service.findByAdminId(adminId);
     }
 

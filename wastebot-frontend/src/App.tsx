@@ -46,12 +46,12 @@ const convertRobot = (backendRobot: RobotType, robotsList: Robot[]): Robot => {
     id: backendRobot.id.toString(),
     name: `Robot-${backendRobot.macAddress || backendRobot.id}`,
     status: backendRobot.status ? 'active' : 'idle',
-    location: backendRobot.address || backendRobot.region || 'Unknown',
+    location: backendRobot.region || 'Unknown',
     lastDetectionTime: existing?.lastDetectionTime || 'Never',
     battery: existing?.battery || 100,
     model: existing?.model || 'WSR-2000',
     ipPort: existing?.ipPort || `${backendRobot.id}:8080`,
-    description: existing?.description || `Robot at ${backendRobot.address || backendRobot.region}`,
+    description: existing?.description || `Robot at ${ backendRobot.region}`,
   };
 };
 

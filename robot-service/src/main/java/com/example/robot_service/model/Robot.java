@@ -13,7 +13,7 @@ public class Robot {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @UniqueElements
+    
     private String macAddress;
     private boolean status;
     private String region;
