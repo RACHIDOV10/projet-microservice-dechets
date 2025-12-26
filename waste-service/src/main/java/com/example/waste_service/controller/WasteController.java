@@ -17,16 +17,41 @@ public class WasteController {
         this.service = service;
     }
 
-    // Récupérer tous les déchets
+    // ================= CREATE =================
+    @PostMapping
+    public Waste create(@RequestBody Waste waste) {
+        waste.setId(null); // forcer la création
+        return service.save(waste);
+    }
+
+    // ================= READ ALL =================
     @GetMapping
     public List<Waste> getAll() {
         return service.findAll();
     }
 
-    // Récupérer un waste par id
+    // ================= READ BY ID =================
     @GetMapping("/{id}")
     public Optional<Waste> getById(@PathVariable String id) {
         return service.findById(id);
     }
 
+    // ================= READ BY ROBOT =================
+    @GetMapping("/robot/{robotId}")
+    public List<Waste> getByRobotId(@PathVariable String robotId) {
+        return service.findByRobotId(robotId);
+    }
+
+    // ================= UPDATE =================
+    @PutMapping("/{id}")
+    public Waste update(@PathVariable String id, @RequestBody Waste waste) {
+        waste.setId(id); // obligatoire pour update
+        return service.save(waste);
+    }
+
+    // ================= DELETE =================
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable String id) {
+        service.delete(id);
+    }
 }

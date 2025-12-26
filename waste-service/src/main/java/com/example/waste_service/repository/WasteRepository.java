@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface WasteRepository extends MongoRepository<Waste, String> {
-
+    List<Waste> findByRobotId(String robotId);
 }

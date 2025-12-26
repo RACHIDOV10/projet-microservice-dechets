@@ -16,22 +16,28 @@ public class WasteService {
         this.repository = repository;
     }
 
-    // Ajouter ou mettre à jour un waste
+    // CREATE / UPDATE
     public Waste save(Waste waste) {
         return repository.save(waste);
     }
 
+    // READ ALL
     public List<Waste> findAll() {
         return repository.findAll();
     }
 
+    // READ BY ID
     public Optional<Waste> findById(String id) {
         return repository.findById(id);
     }
 
+    // DELETE
     public void delete(String id) {
         repository.deleteById(id);
     }
 
-
+    // READ BY ROBOT
+    public List<Waste> findByRobotId(String robotId) {
+        return repository.findByRobotId(robotId);
+    }
 }
