@@ -14,8 +14,8 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamUrl, setStreamUrl] = useState<string>('');
   const videoRef = useRef<HTMLImageElement>(null);
-  const streamUrlRef = useRef<string>('');
   const isStreamingRef = useRef(false);
 
   // Keep ref in sync with state
@@ -23,16 +23,11 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
     isStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
+  // Cleanup on modal unmount
   useEffect(() => {
-    // Cleanup function - stop stream on unmount
     return () => {
-      if (isStreamingRef.current && videoRef.current) {
-        // Clean up video source immediately
-        videoRef.current.src = '';
-        // Attempt to stop stream (fire and forget for cleanup)
-        aiApi.stopStream(robot.id).catch(() => {
-          // Ignore errors during cleanup
-        });
+      if (isStreamingRef.current) {
+        aiApi.stopStream(robot.id).catch(() => {});
       }
     };
   }, [robot.id]);
@@ -40,36 +35,22 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
   const startStreaming = async () => {
     setIsLoading(true);
     setStreamError(null);
-    
+
     try {
       await aiApi.requestStream(robot.id);
       setIsStreaming(true);
       isStreamingRef.current = true;
-      
-      // Set up MJPEG stream URL
-      streamUrlRef.current = aiApi.getStreamUrl(robot.id);
-      if (videoRef.current) {
-        videoRef.current.src = streamUrlRef.current;
-      }
-      
+
+      // Set stream URL in state so React reloads <img> for MJPEG
+      setStreamUrl(aiApi.getStreamUrl(robot.id));
+
       await updateRobotStatus(robot.id, 'active');
     } catch (error: any) {
       console.error('Error starting stream:', error);
       setIsStreaming(false);
       isStreamingRef.current = false;
-      
-      // Handle errors gracefully
-      if (error.response?.status === 503) {
-        toast.error('Streaming service unavailable. Please try again later.', {
-          duration: 5000,
-        });
-        setStreamError('Streaming service unavailable');
-      } else {
-        toast.error('Failed to start video stream', {
-          duration: 5000,
-        });
-        setStreamError('Failed to start video stream');
-      }
+      setStreamError('Failed to start video stream');
+      toast.error('Failed to start video stream', { duration: 5000 });
     } finally {
       setIsLoading(false);
     }
@@ -77,57 +58,34 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
 
   const stopStreaming = async () => {
     setIsLoading(true);
-    
+
     try {
       await aiApi.stopStream(robot.id);
       setIsStreaming(false);
       isStreamingRef.current = false;
+      setStreamUrl('');
       setStreamError(null);
-      
-      if (videoRef.current) {
-        videoRef.current.src = '';
-      }
-      
+
       await updateRobotStatus(robot.id, 'idle');
     } catch (error: any) {
       console.error('Error stopping stream:', error);
-      
-      // Handle errors gracefully
-      if (error.response?.status === 503) {
-        toast.error('Streaming service unavailable', {
-          duration: 5000,
-        });
-      } else {
-        toast.error('Failed to stop video stream', {
-          duration: 5000,
-        });
-      }
-      
-      // Still update UI state even if API call failed
       setIsStreaming(false);
       isStreamingRef.current = false;
+      setStreamUrl('');
       setStreamError(null);
-      if (videoRef.current) {
-        videoRef.current.src = '';
-      }
+      toast.error('Failed to stop video stream', { duration: 5000 });
     } finally {
       setIsLoading(false);
     }
   };
 
   const toggleStream = () => {
-    if (isStreaming) {
-      stopStreaming();
-    } else {
-      startStreaming();
-    }
+    if (isStreaming) stopStreaming();
+    else startStreaming();
   };
 
-  // Cleanup on modal close
   const handleClose = () => {
-    if (isStreaming) {
-      stopStreaming();
-    }
+    if (isStreaming) stopStreaming();
     onClose();
   };
 
@@ -142,10 +100,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             </h2>
             <p className="text-gray-600 dark:text-gray-400">{robot.location}</p>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
+          <button onClick={handleClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
@@ -157,11 +112,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-red-400 mb-4 font-medium">{streamError}</p>
-                  <button
-                    onClick={startStreaming}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg transition-colors"
-                  >
+                  <button onClick={startStreaming} disabled={isLoading} className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg transition-colors">
                     Retry
                   </button>
                 </div>
@@ -180,7 +131,6 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
               </div>
             )}
 
-            {/* Loading indicator */}
             {isLoading && !isStreaming && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -190,16 +140,16 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             {/* MJPEG Stream */}
             {isStreaming && !streamError && (
               <img
+                key={robot.id} // ensures new robot reloads <img>
                 ref={videoRef}
+                src={streamUrl}
                 alt="Robot camera feed"
                 className="w-full h-full object-contain"
                 onError={() => {
                   setStreamError('Failed to load video stream');
                   setIsStreaming(false);
                   isStreamingRef.current = false;
-                  toast.error('Failed to load video stream', {
-                    duration: 5000,
-                  });
+                  toast.error('Failed to load video stream', { duration: 5000 });
                 }}
               />
             )}
@@ -207,9 +157,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
             {/* Status indicator */}
             <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
               <div className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
-              <span className="text-white text-xs font-medium">
-                {isStreaming ? 'LIVE' : 'PAUSED'}
-              </span>
+              <span className="text-white text-xs font-medium">{isStreaming ? 'LIVE' : 'PAUSED'}</span>
             </div>
 
             {/* Recording info */}
@@ -227,9 +175,7 @@ export function CameraFeedModal({ robot, onClose, updateRobotStatus }: CameraFee
                 onClick={toggleStream}
                 disabled={isLoading}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isStreaming
-                    ? 'bg-red-500 hover:bg-red-600 text-white'
-                    : 'bg-green-500 hover:bg-green-600 text-white'
+                  isStreaming ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
                 {isLoading ? (
