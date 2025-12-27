@@ -70,3 +70,7 @@ Service enregistré dans Consul : gateway-service
 
 website video : 
 
+
+https://github.com/user-attachments/assets/742646bb-03ec-466d-b634-0ecb2cd26350
+
+
