@@ -1,4 +1,4 @@
-⚙️ Prérequis (Requirements)
+Prérequis (Requirements)
 -
 Java 17
 
@@ -14,10 +14,10 @@ Git
 
 Postman 
 
-🚀 Installation & Lancement
-1️⃣ Cloner le projet
+Installation & Lancement
+ Cloner le projet
 git clone https://github.com/RACHIDOV10/projet-microservice-dechets.git
-2️⃣ Démarrer MongoDB
+ Démarrer MongoDB
 
 MongoDB doit être lancé avant les services Spring Boot.
 
@@ -30,7 +30,7 @@ La collection sera créée automatiquement :
 wastes
 -
 
-3️⃣ Démarrer Consul
+ Démarrer Consul
 
 En mode développement / Admin:
 
@@ -40,7 +40,7 @@ Interface web Consul :
 
 http://localhost:8500
 
-4️⃣ Lancer waste-service
+ Lancer waste-service
 
 Dans un premier terminal :
 
@@ -55,7 +55,7 @@ Endpoint principal :
 
 http://localhost:8081/api/wastes
 
-5️⃣ Lancer gateway-service
+Lancer gateway-service
 
 Dans un deuxième terminal :
 
@@ -65,3 +65,8 @@ mvn spring-boot:run
 Port : 8082
 
 Service enregistré dans Consul : gateway-service
+
+
+
+website video : 
+
