@@ -66,3 +66,7 @@ export interface Admin {
   email: string;
 }
 
+export interface UpdateAdminRequest {
+  name?: string;
+  password?: string;
+}

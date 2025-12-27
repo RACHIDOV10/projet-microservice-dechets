@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Filter, Search, RefreshCw } from 'lucide-react';
+import { Trash2, Filter, Search, RefreshCw, Download } from 'lucide-react';
 import { wasteApi } from '../services/wasteApi';
 import { toast } from 'sonner';
 import type { Waste } from '../types/api';
@@ -26,12 +26,10 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
   const applyFilters = (wasteList: Waste[]) => {
     let filtered = [...wasteList];
 
-    // Filter by robot ID
     if (selectedRobotId !== 'all') {
       filtered = filtered.filter(waste => waste.robotId === selectedRobotId);
     }
 
-    // Filter by search query (category)
     const trimmedQuery = searchQuery?.trim() || '';
     if (trimmedQuery) {
       filtered = filtered.filter(waste =>
@@ -46,41 +44,54 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
     applyFilters(wastes);
   }, [selectedRobotId, searchQuery, wastes]);
 
-  const handleMarkCollected = async (wasteId: string) => {
-    setLoading(true);
-    try {
-      await wasteApi.markCollected(wasteId);
-      toast.success('Waste marked as collected');
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error marking waste as collected:', error);
-      toast.error(error.response?.data?.message || 'Failed to update waste status', {
-        duration: 5000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getRobotName = (robotId: string | null) => {
-    if (robotId == null) return 'Unassigned';
-    const robot = robots.find(r => {
-      const robotIdStr = r.id.toString();
-      const wasteRobotIdStr = robotId.toString();
-      return robotIdStr === wasteRobotIdStr || r.id === robotId;
-    });
-    return robot?.name || `Robot ${robotId}`;
-  };
-
-  // Compute statistics safely
+  // Aggregated statistics
   const totalWastes = filteredWastes.length;
   const categoryCounts: Record<string, number> = {};
+  const regionCounts: Record<string, number> = {};
   filteredWastes.forEach(waste => {
     const category = waste.category || 'Unknown';
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    const region = waste.region || 'Unknown';
+    regionCounts[region] = (regionCounts[region] || 0) + 1;
   });
   const uniqueCategories = Object.keys(categoryCounts).length;
   const mostCommonCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+  const mostActiveRegion = Object.entries(regionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+  const getRobotName = (robotId: string | null) => {
+    if (!robotId) return 'Unassigned';
+    const robot = robots.find(r => r.id.toString() === robotId.toString());
+    return robot?.name || `Robot ${robotId}`;
+  };
+
+  const handleExportReport = () => {
+    try {
+      const rows = filteredWastes.map(w => ({
+        ID: w.id,
+        Category: w.category || 'Unknown',
+        Region: w.region || 'Unknown',
+        Robot: getRobotName(w.robotId),
+        Timestamp: w.timestamp ? new Date(w.timestamp).toLocaleString() : '—',
+      }));
+      const csvContent = [
+        Object.keys(rows[0] || {}).join(','),
+        ...rows.map(r => Object.values(r).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `waste_report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Report downloaded successfully!');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast.error('Failed to export report');
+    }
+  };
 
   return (
     <div className="p-8">
@@ -133,11 +144,19 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+
+          <button
+            onClick={handleExportReport}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download Report
+          </button>
         </div>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Waste Items</div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalWastes}</div>
@@ -150,9 +169,13 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
           <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Most Common Category</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">{mostCommonCategory}</div>
         </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-gray-600 dark:text-gray-400 text-sm mb-1">Most Active Region</div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{mostActiveRegion}</div>
+        </div>
       </div>
 
-      {/* Waste Table */}
+      {/* Optional Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -176,23 +199,11 @@ export function WasteManagement({ wastes: initialWastes, robots, onRefresh }: Wa
               ) : (
                 filteredWastes.map((waste) => (
                   <tr key={waste.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-6 py-4 text-gray-900 dark:text-white font-mono text-sm">
-                      {waste.id?.substring(0, 8) || 'N/A'}...
-                    </td>
-                    <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                      {waste.category || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {waste.region || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {getRobotName(waste.robotId)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                      {waste.timestamp
-                        ? new Date(waste.timestamp).toLocaleString()
-                        : '—'}
-                    </td>
+                    <td className="px-6 py-4 text-gray-900 dark:text-white font-mono text-sm">{waste.id?.substring(0, 8) || 'N/A'}...</td>
+                    <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">{waste.category || 'Unknown'}</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{waste.region || 'Unknown'}</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{getRobotName(waste.robotId)}</td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{waste.timestamp ? new Date(waste.timestamp).toLocaleString() : '—'}</td>
                   </tr>
                 ))
               )}

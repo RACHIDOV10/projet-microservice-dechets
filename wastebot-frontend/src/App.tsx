@@ -294,14 +294,19 @@ export default function App() {
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className="flex h-screen transition-colors relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900"></div>
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
+        </div>
         <Sidebar
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           darkMode={darkMode}
           onLogout={handleLogout}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative z-10">
           {renderPage()}
         </main>
         {showCameraModal && selectedRobot && (

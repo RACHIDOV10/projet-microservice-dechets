@@ -47,6 +47,30 @@ public class AdminController {
         return new LoginResponse(token);
     }
 
+    @PutMapping("/{id}")
+public Admin updateAdmin(@PathVariable String id, @RequestBody UpdateAdminRequest request) {
+    // Fetch the existing admin
+    Admin existingAdmin = service.findById(id)
+            .orElseThrow(() -> new RuntimeException("Admin not found with id: " + id));
+
+    // Update fields if provided
+    if (request.getName() != null && !request.getName().isEmpty()) {
+        existingAdmin.setName(request.getName());
+    }
+
+    if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+        existingAdmin.setPassword(passwordEncoder.encode(request.getPassword()));
+    }
+
+    return service.save(existingAdmin);
+}
+
+@Data
+static class UpdateAdminRequest {
+    private String name;
+    private String password;
+}
+
     @Data
     static class LoginRequest {
         private String email;
