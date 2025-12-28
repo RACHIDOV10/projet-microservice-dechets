@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface RobotRepository extends JpaRepository<Robot, Long> {
 
-    List<Robot> findByAdminId(String adminId);
+    List<Robot> findByAdminId(Long adminId);
 }
