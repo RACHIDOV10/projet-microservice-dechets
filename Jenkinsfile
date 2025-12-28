@@ -24,6 +24,7 @@ pipeline {
                 stage('Admin Service') {
                     steps {
                         dir('admin-service') {
+                            bat 'mvn clean'
                             bat 'mvn clean compile test'
                         }
                     }
