@@ -1,6 +1,6 @@
 package com.example.admin_service.controller;
-import com.example.admin_service.jwt.*;
 import com.example.admin_service.model.Admin;
+import com.example.admin_service.jwt.JwtUtil2;
 import com.example.admin_service.service.AdminService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class AdminController {
 
     private final AdminService service;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final JwtUtil2 jwtUtil;
     private final AuthenticationManager authManager;
 
     // Créer un admin (registration) with hashed password
