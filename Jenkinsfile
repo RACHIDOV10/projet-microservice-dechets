@@ -57,44 +57,28 @@ pipeline {
                 stage('SonarQube - Admin Service') {
                     steps {
                         dir('admin-service') {
-                            script {
-                                withSonarQubeEnv('SonarQube') {
-                                    bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
-                                }
-                            }
+                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                         }
                     }
                 }
                 stage('SonarQube - Gateway Service') {
                     steps {
                         dir('gatewayy-service') {
-                            script {
-                                withSonarQubeEnv('SonarQube') {
-                                    bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
-                                }
-                            }
+                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                         }
                     }
                 }
                 stage('SonarQube - Robot Service') {
                     steps {
                         dir('robot-service') {
-                            script {
-                                withSonarQubeEnv('SonarQube') {
-                                    bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
-                                }
-                            }
+                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                         }
                     }
                 }
                 stage('SonarQube - Waste Service') {
                     steps {
                         dir('waste-service') {
-                            script {
-                                withSonarQubeEnv('SonarQube') {
-                                    bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
-                                }
-                            }
+                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                         }
                     }
                 }
@@ -118,14 +102,10 @@ pipeline {
         stage('SonarQube Analysis - FastAPI') {
             steps {
                 dir('ai-service') {
-                    script {
-                        withSonarQubeEnv('SonarQube') {
-                            bat '''
-                                call venv\\Scripts\\activate.bat
-                                sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%
-                            '''
-                        }
-                    }
+                    bat '''
+                        call venv\\Scripts\\activate.bat
+                        sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%
+                    '''
                 }
             }
         }
@@ -143,11 +123,7 @@ pipeline {
         stage('SonarQube Analysis - React') {
             steps {
                 dir('wastebot-frontend') {
-                    script {
-                        withSonarQubeEnv('SonarQube') {
-                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
-                        }
-                    }
+                    bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                 }
             }
         }
