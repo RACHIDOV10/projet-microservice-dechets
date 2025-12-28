@@ -9,7 +9,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 
 @Component
-public class JwtUtil {
+public class JwtUtil2 {
 
     private final SecretKey key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
