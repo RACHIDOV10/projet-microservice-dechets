@@ -7,12 +7,8 @@ pipeline {
         nodejs 'NodeJS'
     }
 
-    environment {
-        SONAR_TOKEN = credentials('projet3d-token')
-        SONAR_HOST_URL = 'http://localhost:9000'
-    }
-
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -46,61 +42,6 @@ pipeline {
                     steps {
                         dir('waste-service') {
                             bat 'mvn clean compile test'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            parallel {
-                // ---- Spring Boot Services ----
-                stage('SonarQube - Admin Service') {
-                    steps {
-                        dir('admin-service') {
-                            bat "mvn sonar:sonar -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%"
-                        }
-                    }
-                }
-                stage('SonarQube - Gateway Service') {
-                    steps {
-                        dir('gatewayy-service') {
-                            bat "mvn sonar:sonar -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%"
-                        }
-                    }
-                }
-                stage('SonarQube - Robot Service') {
-                    steps {
-                        dir('robot-service') {
-                            bat "mvn sonar:sonar -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%"
-                        }
-                    }
-                }
-                stage('SonarQube - Waste Service') {
-                    steps {
-                        dir('waste-service') {
-                            bat "mvn sonar:sonar -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%"
-                        }
-                    }
-                }
-
-                // ---- FastAPI Service ----
-                stage('SonarQube - FastAPI Service') {
-                    steps {
-                        dir('ai-service') {
-                            bat '''
-                                call venv\\Scripts\\activate.bat
-                                sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%
-                            '''
-                        }
-                    }
-                }
-
-                // ---- React Frontend ----
-                stage('SonarQube - React Frontend') {
-                    steps {
-                        dir('wastebot-frontend') {
-                            bat 'sonar-scanner -Dsonar.host.url=%SONAR_HOST_URL% -Dsonar.login=%SONAR_TOKEN%'
                         }
                     }
                 }
