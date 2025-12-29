@@ -54,9 +54,9 @@ pipeline {
                     bat '''
                         python -m venv venv
                         call venv\\Scripts\\activate.bat
-                        pip install --upgrade pip
-                        pip install -r requirements.txt
-                        pytest --cov=. --cov-report=xml --cov-report=html
+                        python -m pip install --upgrade pip
+                        python -m pip install -r requirements.txt
+                        python -m pytest --cov=. --cov-report=xml --cov-report=html
                     '''
                 }
             }
